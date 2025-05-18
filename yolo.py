@@ -1,3 +1,4 @@
+
 import torch
 import numpy as np
 import cv2
@@ -12,12 +13,14 @@ import random
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class YOLOv5CarMatcher:
-    def __init__(self, ref_folder: str, output_folder: str = 'output', conf_threshold: float = 0.25):
+    def __init__(self, ref_folder: str, output_folder: str = 'output', crops_folder: str = 'crops', conf_threshold: float = 0.25):
         self.model = self.load_model()
         self.ref_histograms, self.ref_shapes = self.load_reference_features(ref_folder)
         self.output_folder = output_folder
+        self.crops_folder = crops_folder
         self.conf_threshold = conf_threshold
         os.makedirs(self.output_folder, exist_ok=True)
+        os.makedirs(self.crops_folder, exist_ok=True)
 
     def load_model(self):
         logging.info("Loading YOLOv5 model...")
@@ -90,6 +93,30 @@ class YOLOv5CarMatcher:
             image = cv2.warpAffine(image, M, (image.shape[1], image.shape[0]))
         return image
 
+    def save_crops(self, image, detections, image_name):
+        """Save cropped objects based on detection results."""
+        for i, det in enumerate(detections):
+            x1, y1, x2, y2, conf, cls = det
+            # Convert coordinates to integers
+            x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
+            
+            # Skip small bounding boxes
+            w, h = x2 - x1, y2 - y1
+            if w < 30 or h < 30:
+                continue
+                
+            # Crop the object
+            cropped_object = image[y1:y2, x1:x2]
+            
+            # Create a filename
+            class_name = self.model.names[int(cls)]
+            filename = f"{os.path.splitext(image_name)[0]}_{class_name}_{i}_{conf:.2f}.jpg"
+            crop_path = os.path.join(self.crops_folder, filename)
+            
+            # Save the cropped image
+            cv2.imwrite(crop_path, cropped_object)
+            logging.info(f"Saved crop: {crop_path}")
+
     def process_image(self, image_path):
         start_time = time.time()
         image = cv2.imread(image_path)
@@ -101,12 +128,18 @@ class YOLOv5CarMatcher:
 
         results = self.run_inference(image_path)
         detections = results.xyxy[0].cpu().numpy()
+        
+        # Save all detected objects as crops
+        image_name = os.path.basename(image_path)
+        self.save_crops(image_orig, detections, image_name)
+        
+        # Apply NMS for display and matching
         detections = self.apply_nms(detections)
         match_found = False
 
         for det in detections:
             x1, y1, x2, y2, conf, cls = det
-            if int(cls) == 2 and conf >= self.conf_threshold:
+            if int(cls) == 2 and conf >= self.conf_threshold:  # Class 2 is car in COCO
                 w, h = x2 - x1, y2 - y1
                 if w < 30 or h < 30:
                     continue
@@ -151,3 +184,9 @@ class YOLOv5CarMatcher:
         logging.info(f"Processed all images in {elapsed:.2f} seconds")
         logging.info(f"Average time per image: {avg_time:.2f} seconds")
         logging.info(f"Total matches found: {match_count}")
+
+if __name__ == '__main__':
+    input_folder = "frames"
+    reference_folder = "reference"
+    matcher = YOLOv5CarMatcher(ref_folder=reference_folder, conf_threshold=0.3)
+    matcher.process_folder(input_folder)
