@@ -81,7 +81,3 @@ class YOLOv5Detector:
         for file in tqdm(files, desc="Processing images", unit="image"):
             self.process_image(os.path.join(folder, file))
         logging.info(f"Saved all detected crops to {self.crops_folder}")
-
-# Example Usage:
-detector = YOLOv5Detector(crops_folder="final_crops", targetClass=0)  # Class 0 = person
-detector.process_folder("input_images")
