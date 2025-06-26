@@ -9,14 +9,14 @@ from typing import List
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class YOLOv5Detector:
-    def __init__(self, crops_folder: str = 'crops', conf_threshold: float = 0.25, targetClass: int = 0):
+    def __init__(self, output_folder, conf_threshold: float = 0.25, targetClass: int = 0):
         self.model = self.load_model()
-        self.crops_folder = crops_folder
+        self.output_folder = output_folder
         self.conf_threshold = conf_threshold
         self.targetClass = targetClass
+        os.makedirs(self.output_folder, exist_ok=True)
+        self.previous_boxes: List[np.ndarray] = []
 
-        os.makedirs(self.crops_folder, exist_ok=True)
-        self.previous_boxes: List[np.ndarray] = []  # Store previous bounding boxes to avoid duplicates
 
     def load_model(self):
         logging.info("Loading YOLOv5 model...")
@@ -47,7 +47,7 @@ class YOLOv5Detector:
         crop = image[y1:y2, x1:x2]
         class_name = self.model.names[int(cls)]
         filename = f"{os.path.splitext(image_name)[0]}_{class_name}_{suffix}_{conf:.2f}.jpg"
-        path = os.path.join(self.crops_folder, filename)
+        path = os.path.join(self.output_folder, filename)
         cv2.imwrite(path, crop)
         return crop
 
@@ -80,4 +80,4 @@ class YOLOv5Detector:
         logging.info(f"Found {len(files)} images in {folder}")
         for file in tqdm(files, desc="Processing images", unit="image"):
             self.process_image(os.path.join(folder, file))
-        logging.info(f"Saved all detected crops to {self.crops_folder}")
+        logging.info(f"Saved all detected crops to {self.output_folder}")

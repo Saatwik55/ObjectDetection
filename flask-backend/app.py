@@ -34,6 +34,8 @@ def process():
         yield "[INFO] Extracting frames from video...\n"
         main.generate_frames(video_path)
         yield "[INFO] Running YOLO on extracted frames...\n"
+        main.process_reference_images(target)
+        yield "[INFO] Running YOLO on extracted frames...\n"
         main.process_all_frames_sequentially(target)
 
         yield "[INFO] Running DINO similarity matching...\n"
