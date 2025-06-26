@@ -4,8 +4,8 @@ from PIL import Image
 import timm
 from torch.nn.functional import normalize
 from torch.nn import CosineSimilarity
-
-model = timm.create_model("vit_large_patch14_dinov2.lvd142m", pretrained=True)
+import os
+model = timm.create_model("vit_base_patch14_dinov2.lvd142m", pretrained=True)
 model.eval()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)

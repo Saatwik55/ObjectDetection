@@ -1,23 +1,25 @@
 import os
-import cv2
 import shutil
-import torch
 from glob import glob
-from yolo import YOLOv5CarMatcher 
+from yolo import YOLOv5Matcher 
 from compare import load_and_embed, CosineSimilarity 
 import capture
 
+
+lookup_class = {"humans": 0, "bikes": 3, "cars": 2}
 FRAMES_DIR = "frames"
 CANDIDATES_DIR = "candidates"
 REFERENCE_DIR = "reference"
 
-def process_all_frames_sequentially():
+def generate_frames(video_path):
+    capture.extract_frames(video_path, FRAMES_DIR)
+
+def process_all_frames_sequentially(target):
     frame_paths = sorted(glob(os.path.join(FRAMES_DIR, "*.jpg")))
     if not frame_paths:
         print("[WARN] No frames found to process.")
         return
-
-    matcher = YOLOv5CarMatcher(ref_folder=REFERENCE_DIR, output_folder=CANDIDATES_DIR)
+    matcher = YOLOv5Matcher(ref_folder=REFERENCE_DIR, output_folder=CANDIDATES_DIR, targetClass=lookup_class[target])
     print(f"[INFO] Processing {len(frame_paths)} frames sequentially...")
 
     for frame in frame_paths:
@@ -27,7 +29,7 @@ def process_all_frames_sequentially():
 
 def find_best_matches(top_k=3):
     reference_images = sorted(glob(os.path.join(REFERENCE_DIR, "*")))
-    candidate_images = sorted(glob(os.path.join(CANDIDATES_DIR, "matched_*.jpg")))
+    candidate_images = sorted(glob(os.path.join("crops", "*.jpg")))
 
     if not reference_images or not candidate_images:
         print("[WARN] No reference or candidate images found.")
@@ -46,13 +48,8 @@ def find_best_matches(top_k=3):
     all_scores.sort(key=lambda x: x[1], reverse=True)
     print(f"\n[RESULTS] Top {top_k} Matches:")
     for i, (img_path, score) in enumerate(all_scores[:top_k]):
-        frame_number = os.path.basename(img_path).split("_")[-1].split(".")[0]
-        print(f"#{i+1}: Frame {frame_number} with similarity score: {score:.4f}")
+        print(f"#{i+1}: Frame {img_path} with similarity score: {score:.4f}")
 
 def cleanup():
     shutil.rmtree(FRAMES_DIR, ignore_errors=True)
 
-if __name__ == "__main__":
-    capture.extract_frames("input_vid\\12010437_2160_3840_30fps.mp4")
-    process_all_frames_sequentially()
-    find_best_matches(top_k=3)
