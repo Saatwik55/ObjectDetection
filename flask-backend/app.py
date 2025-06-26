@@ -33,10 +33,11 @@ def process():
     def generate_logs():
         yield "[INFO] Extracting frames from video...\n"
         main.generate_frames(video_path)
+        main.initialize(target)
+        yield "[INFO] Running YOLO on reference frames...\n"
+        main.process_reference_images()
         yield "[INFO] Running YOLO on extracted frames...\n"
-        main.process_reference_images(target)
-        yield "[INFO] Running YOLO on extracted frames...\n"
-        main.process_all_frames_sequentially(target)
+        main.process_all_frames()
 
         yield "[INFO] Running DINO similarity matching...\n"
 

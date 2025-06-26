@@ -40,7 +40,7 @@ class YOLOv5Detector:
             if self.center_distance(old_box, new_box) < dist_thresh:
                 return True
         return False
-
+    
     def save_crop(self, image, det, image_name, suffix=""):
         x1, y1, x2, y2, conf, cls = det
         x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
@@ -81,3 +81,45 @@ class YOLOv5Detector:
         for file in tqdm(files, desc="Processing images", unit="image"):
             self.process_image(os.path.join(folder, file))
         logging.info(f"Saved all detected crops to {self.output_folder}")
+
+    def process_reference_folder(self, ref_folder, reference_crops_folder):
+        os.makedirs(reference_crops_folder, exist_ok=True)
+        supported_exts = ('.jpg', '.jpeg', '.png', '.bmp')
+        files = [f for f in os.listdir(ref_folder) if f.lower().endswith(supported_exts)]
+
+        if not files:
+            logging.warning(f"No valid images found in {ref_folder}")
+            return
+
+        logging.info(f"Processing {len(files)} reference images from {ref_folder}...")
+
+        for file in tqdm(files, desc="Cropping reference images", unit="image"):
+            img_path = os.path.join(ref_folder, file)
+            image = cv2.imread(img_path)
+            if image is None:
+                logging.warning(f"Failed to load {img_path}")
+                continue
+
+            results = self.run_inference(img_path)
+            detections = results.xyxy[0].cpu().numpy()
+
+            found = False
+            for idx, det in enumerate(detections):
+                x1, y1, x2, y2, conf, cls = det
+                if int(cls) != self.targetClass or conf < self.conf_threshold:
+                    continue
+                w, h = x2 - x1, y2 - y1
+                if w < 30 or h < 30:
+                    continue
+
+                x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
+                crop = image[y1:y2, x1:x2]
+                class_name = self.model.names[int(cls)]
+                filename = f"{os.path.splitext(file)[0]}_{class_name}_ref_{conf:.2f}.jpg"
+                crop_path = os.path.join(reference_crops_folder, filename)
+                cv2.imwrite(crop_path, crop)
+                found = True
+                break  # Only take first valid detection
+
+            if not found:
+                logging.warning(f"No valid detection found in {file}")
