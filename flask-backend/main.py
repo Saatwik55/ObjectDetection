@@ -23,37 +23,11 @@ def initialize(target_class_name):
 
 def generate_frames(video_path):
     capture.extract_frames(video_path, FRAMES_DIR)
+    
 def process_reference_images():
     print(f"[INFO] Processing reference images in {REFERENCE_DIR}")
     detector.process_reference_folder(ref_folder=REFERENCE_DIR, reference_crops_folder=REFERENCE_CROPS_DIR)
     print(f"[INFO] Reference crops saved to {REFERENCE_CROPS_DIR}")
-
-def augment_reference_crops():
-    print("[INFO] Augmenting reference crops...")
-    supported_formats = ('.jpg', '.jpeg', '.png', '.bmp')
-    crop_paths = [f for f in os.listdir(REFERENCE_CROPS_DIR) if f.lower().endswith(supported_formats)]
-
-    for file in crop_paths:
-        if '_gray' in file or '_bright' in file:
-            continue  # Skip already-augmented files
-
-        full_path = os.path.join(REFERENCE_CROPS_DIR, file)
-        crop = cv2.imread(full_path)
-        if crop is None or crop.size == 0:
-            continue
-
-        base_name = os.path.splitext(file)[0]
-
-        # Desaturated / Gray
-        gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
-        gray_bgr = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
-        cv2.imwrite(os.path.join(REFERENCE_CROPS_DIR, f"{base_name}_gray.jpg"), gray_bgr)
-
-        # Brightened
-        bright = cv2.convertScaleAbs(crop, alpha=1.3, beta=30)
-        cv2.imwrite(os.path.join(REFERENCE_CROPS_DIR, f"{base_name}_bright.jpg"), bright)
-
-    print("[INFO] Reference crop augmentation complete.")
 
 def process_all_frames():
     frame_paths = sorted(glob(os.path.join(FRAMES_DIR, "*.jpg")))
@@ -67,7 +41,6 @@ def process_all_frames():
 
     print(f"[INFO] Frame crops saved to {CANDIDATES_DIR}")
 
-import json
 import shutil
 
 def find_best_matches(top_k=10):
