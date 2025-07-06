@@ -13,6 +13,7 @@ FRAMES_DIR = "frames"
 CANDIDATES_DIR = "candidates"
 REFERENCE_DIR = "reference"
 REFERENCE_CROPS_DIR = "reference_crops"
+OUTPUT_DIR = "output"
 detector = None
 # Initialize detector globally
 def initialize(target_class_name):
@@ -22,12 +23,10 @@ def initialize(target_class_name):
 
 def generate_frames(video_path):
     capture.extract_frames(video_path, FRAMES_DIR)
-
 def process_reference_images():
     print(f"[INFO] Processing reference images in {REFERENCE_DIR}")
     detector.process_reference_folder(ref_folder=REFERENCE_DIR, reference_crops_folder=REFERENCE_CROPS_DIR)
     print(f"[INFO] Reference crops saved to {REFERENCE_CROPS_DIR}")
-    augment_reference_crops()
 
 def augment_reference_crops():
     print("[INFO] Augmenting reference crops...")
@@ -68,7 +67,10 @@ def process_all_frames():
 
     print(f"[INFO] Frame crops saved to {CANDIDATES_DIR}")
 
-def find_best_matches(top_k=3):
+import json
+import shutil
+
+def find_best_matches(top_k=10):
     reference_images = sorted(glob(os.path.join(REFERENCE_CROPS_DIR, "*.jpg")))
     candidate_images = sorted(glob(os.path.join(CANDIDATES_DIR, "*.jpg")))
 
@@ -76,9 +78,13 @@ def find_best_matches(top_k=3):
         print("[WARN] No reference or candidate images found.")
         return
 
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+    # Load reference embeddings
     ref_embeds = [load_and_embed(ref) for ref in reference_images]
     all_scores = []
 
+    # Score each candidate
     for cand in candidate_images:
         print(f"[INFO] Comparing candidate: {cand}")
         cand_embed = load_and_embed(cand)
@@ -86,10 +92,18 @@ def find_best_matches(top_k=3):
         max_score = max(scores)
         all_scores.append((cand, max_score))
 
+    # Sort and pick top_k
     all_scores.sort(key=lambda x: x[1], reverse=True)
-    print(f"\n[RESULTS] Top {top_k} Matches:")
-    for i, (img_path, score) in enumerate(all_scores[:top_k]):
-        print(f"#{i+1}: {img_path} with similarity score: {score:.4f}")
+    top_matches = all_scores[:top_k]
+
+    # Copy top matches to output folder with rank-based filename
+    for rank, (img_path, _) in enumerate(top_matches, start=1):
+        original_filename = os.path.basename(img_path)
+        new_filename = f"{rank:02d}_{original_filename}"
+        shutil.copy(img_path, os.path.join(OUTPUT_DIR, new_filename))
+
+    print(f"[INFO] Top {len(top_matches)} matches saved to '{OUTPUT_DIR}/'")
+
 
 def cleanup():
     shutil.rmtree(FRAMES_DIR, ignore_errors=True)

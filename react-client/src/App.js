@@ -6,6 +6,7 @@ function App() {
   const [target, setTarget] = useState("cars");
   const [logOutput, setLogOutput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [outputImages, setOutputImages] = useState([]);
 
   const handleSubmit = async () => {
     if (!video || referenceImages.length === 0) {
@@ -15,6 +16,7 @@ function App() {
 
     setLoading(true);
     setLogOutput("");
+    setOutputImages([]); // Clear previous images
 
     const formData = new FormData();
     formData.append("video", video);
@@ -36,6 +38,11 @@ function App() {
       if (done) break;
       setLogOutput((prev) => prev + decoder.decode(value));
     }
+
+    // Fetch output images after processing
+    const imageRes = await fetch("http://localhost:5000/results");
+    const imageList = await imageRes.json();
+    setOutputImages(imageList);
 
     setLoading(false);
   };
@@ -73,6 +80,21 @@ function App() {
       </button>
 
       <pre style={styles.logBox}>{logOutput}</pre>
+
+      {outputImages.length > 0 && (
+        <div style={styles.imageGrid}>
+          {outputImages.map((img, idx) => (
+            <div key={idx} style={styles.imageCard}>
+              <img
+                src={`http://localhost:5000/output/${img}`}
+                alt={`match ${idx}`}
+                style={styles.image}
+              />
+              <p style={styles.caption}>{img}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -81,7 +103,7 @@ const styles = {
   container: {
     padding: "2rem",
     fontFamily: "sans-serif",
-    maxWidth: "600px",
+    maxWidth: "900px",
     margin: "auto",
   },
   heading: {
@@ -111,6 +133,30 @@ const styles = {
     whiteSpace: "pre-wrap",
     fontSize: "0.9rem",
     border: "1px solid #ccc",
+  },
+  imageGrid: {
+    marginTop: "2rem",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+    gap: "1rem",
+  },
+  imageCard: {
+    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+    borderRadius: "8px",
+    overflow: "hidden",
+    backgroundColor: "#fff",
+    textAlign: "center",
+    padding: "0.5rem",
+  },
+  image: {
+    width: "100%",
+    height: "auto",
+    borderRadius: "4px",
+  },
+  caption: {
+    fontSize: "0.85rem",
+    marginTop: "0.5rem",
+    color: "#333",
   },
 };
 

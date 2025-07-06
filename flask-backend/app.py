@@ -1,4 +1,4 @@
-from flask import Flask, request, Response
+from flask import Flask, request, Response, send_from_directory, jsonify
 from flask_cors import CORS
 import os
 import shutil
@@ -8,7 +8,9 @@ app = Flask(__name__)
 CORS(app)
 app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024 * 1024
 UPLOAD_FOLDER = 'input'
+OUTPUT_FOLDER = 'output'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 @app.route('/process', methods=['POST'])
 def process():
@@ -46,7 +48,7 @@ def process():
         old_stdout = sys.stdout
         sys.stdout = mystdout = StringIO()
 
-        main.find_best_matches(top_k=3)
+        main.find_best_matches()
 
         sys.stdout = old_stdout
         yield mystdout.getvalue()
@@ -55,5 +57,24 @@ def process():
 
     return Response(generate_logs(), mimetype='text/plain')
 
+
+@app.route('/results', methods=['GET'])
+def get_output_images():
+    if not os.path.exists(OUTPUT_FOLDER):
+        return jsonify([])
+
+    files = sorted([
+        f for f in os.listdir(OUTPUT_FOLDER)
+        if os.path.isfile(os.path.join(OUTPUT_FOLDER, f)) and f.lower().endswith(('.png', '.jpg', '.jpeg'))
+    ])
+
+    return jsonify(files)
+
+
+@app.route('/output/<filename>')
+def serve_output_image(filename):
+    return send_from_directory(OUTPUT_FOLDER, filename)
+
+
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=False) 
+    app.run(host='0.0.0.0', port=5000, debug=False)
