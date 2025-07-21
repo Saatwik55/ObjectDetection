@@ -14,6 +14,7 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 @app.route('/process', methods=['POST'])
 def process():
+    main.cleanup()
     if request.method != 'POST':
         return "Method not allowed", 405
     video = request.files.get('video')
@@ -34,8 +35,8 @@ def process():
 
     def generate_logs():
         yield "[INFO] Extracting frames from video...\n"
-        main.generate_frames(video_path)
-        main.initialize(target)
+        fps = main.generate_frames(video_path)
+        main.initialize(target, fps)
         yield "[INFO] Running YOLO on reference frames...\n"
         main.process_reference_images()
         yield "[INFO] Running YOLO on extracted frames...\n"
@@ -48,7 +49,7 @@ def process():
         old_stdout = sys.stdout
         sys.stdout = mystdout = StringIO()
 
-        main.find_best_matches()
+        main.find_best_matches(target)
 
         sys.stdout = old_stdout
         yield mystdout.getvalue()

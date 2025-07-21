@@ -4,7 +4,6 @@ from PIL import Image
 import timm
 from torch.nn.functional import normalize
 from torch.nn import CosineSimilarity
-import os
 model = timm.create_model("vit_base_patch14_dinov2.lvd142m", pretrained=True)
 model.eval()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -31,4 +30,4 @@ def compare_images(img1_path, img2_path):
     emb2 = load_and_embed(img2_path)
     cos = CosineSimilarity(dim=1)
     sim_score = cos(emb1, emb2).item()
-    print(f"Cosine similarity between '{img1_path}' and '{img2_path}': {sim_score:.4f}")
+    print(f"Cosine similarity between '{img1_path}' and '{img2_path}': {sim_score:.4f}", flush=True)

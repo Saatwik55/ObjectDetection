@@ -1,4 +1,10 @@
 # Byte-compiled / optimized / DLL files
+frames/
+candidates/
+output/
+reference_crops/
+reference/
+input/
 __pycache__/
 *.py[cod]
 *$py.class
